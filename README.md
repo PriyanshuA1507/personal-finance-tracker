@@ -1,25 +1,38 @@
 # Personal Finance Tracker (SDE Assignment)
 
-A full-stack Personal Finance Tracker with Role-Based Access Control (RBAC), Redis caching, and PostgreSQL.
+A production-ready full-stack Personal Finance Tracker featuring Role-Based Access Control (RBAC), Redis caching, and a PostgreSQL database.
 
-## 🚀 Features
-- **User Authentication**: JWT-based login/registration with 3 roles (Admin, User, Read-Only).
-- **Transaction Management**: CRUD operations for finances with owner-only access.
-- **Analytics Dashboard**: Interactive Chart.js visualizations (Pie, Bar, Line).
-- **Performance**: Redis caching (15m for analytics), API Rate Limiting, and Lazy Loading.
-- **Security**: PostgreSQL (Sequelize) for SQL Injection prevention and Helmet for XSS.
+## 🔗 Live Demo
+**Application URL**: [https://personal-finance-tracker-1-64th.onrender.com/login](https://personal-finance-tracker-1-64th.onrender.com/login)  
+**API Documentation (Swagger)**: [https://personal-finance-tracker-1-64th.onrender.com/api-docs](https://personal-finance-tracker-1-64th.onrender.com/api-docs)
+
+## 🔑 Demo Credentials
+Access the application using these pre-configured roles:
+- **Admin**: `admin` / `pass123` (Full access to all transactions)
+- **User**: `user` / `pass123` (Can manage own data only)
+- **Read-Only**: `readonly` / `pass123` (View-only access to data)
 
 ## 🛠️ Tech Stack
-- **Frontend**: React 18, Chart.js, Context API
-- **Backend**: Node.js, Express.js, PostgreSQL (Sequelize), Redis
-- **Documentation**: Swagger/OpenAPI
+- **Frontend**: React 18, Chart.js, Context API, Tailwind CSS
+- **Backend**: Node.js, Express.js, PostgreSQL (Sequelize ORM)
+- **Caching**: Redis (Valkey)
+- **Security**: JWT Authentication, Helmet (XSS protection), Sequelize (SQL Injection prevention)
 
-## ⚙️ Local Setup
-1. **Database**: 
-   - Ensure PostgreSQL is running.
-   - Run `psql postgres` -> `CREATE DATABASE finance_tracker;`
-2. **Environment**: Create a `.env` in the `backend` folder:
-   ```env
-   PORT=5001
-   JWT_SECRET=your_secret
-   REDIS_URL=redis://localhost:6379
+## 🚀 Key Features Implemented
+- **RBAC**: Three distinct user roles with conditional UI rendering and backend permission checks.
+- **Performance**: Redis caching for analytics (15m) and categories (1h) to reduce database load.
+- **Rate Limiting**: Tiered API limits (Auth: 5/15m, Transactions: 100/1h, Analytics: 50/1h).
+- **Responsive Dashboard**: Interactive data visualizations for financial tracking.
+
+## ⚙️ Local Setup Instructions
+If you prefer to run the project locally:
+1. **Database**: Create a PostgreSQL DB named `finance_tracker`.
+2. **Environment**: Create a `.env` in `/backend` with `DATABASE_URL`, `REDIS_URL`, and `JWT_SECRET`.
+3. **Install**:
+   ```bash
+   # In /backend and /frontend
+   npm install
+   # Start backend
+cd backend && npm run dev
+# Start frontend
+cd frontend && npm run dev
