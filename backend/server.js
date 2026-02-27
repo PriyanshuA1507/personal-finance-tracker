@@ -11,14 +11,14 @@ const { authLimiter, transactionLimiter, analyticsLimiter } = require('./middlew
 // Load environment variables
 dotenv.config();
 
-// 1. Connect to PostgreSQL [cite: 7]
+// 1. Connect to PostgreSQL [cite: 7, 76]
 connectDB();
 
 const app = express();
 
 // 2. Security & Global Middleware [cite: 72, 73]
 app.use(helmet({
-  contentSecurityPolicy: false, 
+  contentSecurityPolicy: false, // Allows Swagger UI to load correctly [cite: 93]
 }));
 app.use(cors());
 app.use(express.json());
@@ -30,7 +30,7 @@ const swaggerOptions = {
     info: {
       title: 'Finance Tracker API',
       version: '1.0.0',
-      description: 'API documentation with Role-Based Access Control (RBAC) [cite: 15]',
+      description: 'API documentation with Role-Based Access Control (RBAC) [cite: 15, 75]',
     },
     servers: [{ url: process.env.LIVE_URL || `http://localhost:${process.env.PORT || 5001}` }],
     components: {
@@ -45,23 +45,23 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// 4. API Route Mounting [cite: 37, 68]
+// 4. API Route Mounting with Rate Limiting [cite: 37, 68]
 const authRoutes = require('./routes/authRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 
-app.use('/api/auth', authLimiter, authRoutes); // [cite: 69]
-app.use('/api/transactions', transactionLimiter, transactionRoutes); // [cite: 70]
-app.use('/api/analytics', analyticsLimiter, analyticsRoutes); // [cite: 71]
+app.use('/api/auth', authLimiter, authRoutes); // 5 req/15 min [cite: 69]
+app.use('/api/transactions', transactionLimiter, transactionRoutes); // 100 req/hr [cite: 70]
+app.use('/api/analytics', analyticsLimiter, analyticsRoutes); // 50 req/hr [cite: 71]
 
-// --- PRODUCTION READY STATIC ASSETS & ROUTING ---
+// --- PRODUCTION STATIC ASSETS & SPA ROUTING ---
 
-// 5. Serve static files from the React frontend build folder [cite: 91]
+// 5. Serve static files from the React frontend build folder [cite: 91, 96]
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-// 6. THE FIX: Using a named parameter for the wildcard (Compatible with Node 22/Express 5)
-// This captures all routes and sends index.html, enabling React Router 
-app.get('/:splat*', (req, res) => {
+// 6. THE FIX: Regex Catch-all (Compatible with Node v22 / Express 5)
+// This matches any route that does NOT start with /api and sends index.html [cite: 14, 52]
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
