@@ -1,8 +1,19 @@
 const { Sequelize } = require('sequelize');
 
 // Database name must match what you created in Step 2
+
+
 const sequelize = process.env.DATABASE_URL 
-  ? new Sequelize(process.env.DATABASE_URL, { dialect: 'postgres', logging: false })
+  ? new Sequelize(process.env.DATABASE_URL, { 
+      dialect: 'postgres', 
+      logging: false,
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false // This is required for Render's self-signed certificates
+        }
+      }
+    })
   : new Sequelize('finance_tracker', 'priyanshubhardwaj', '', {
       host: 'localhost',
       dialect: 'postgres',
