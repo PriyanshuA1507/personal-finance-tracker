@@ -62,10 +62,9 @@ app.use('/api/analytics', analyticsLimiter, analyticsRoutes); // 50 req/hr [cite
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // 6. The "Catch-all" handler: Send back React's index.html for any unknown route
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
-
 // ---------------------------------------
 
 const PORT = process.env.PORT || 5001;
