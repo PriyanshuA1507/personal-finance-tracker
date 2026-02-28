@@ -1,13 +1,12 @@
 import axios from 'axios';
 
-// The FIX: Use a relative path for the live site, and localhost for your Mac
-const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
+// FORCE the live URL. Delete the localhost fallback completely.
+const API_URL = 'https://personal-finance-tracker-1-64th.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
 });
 
-// Automatically attach the JWT token to every request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
