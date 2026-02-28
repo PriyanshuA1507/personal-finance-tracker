@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api'; // THE FIX: Import your configured API instance
 import { AuthContext } from '../context/AuthContext';
 
 const Login = () => {
@@ -14,8 +14,8 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      // Hit the backend login endpoint
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
+      // THE FIX: Use 'api.post' and the relative path. It will automatically use the correct Live URL!
+      const response = await api.post('/auth/login', {
         username,
         password,
       });
