@@ -1,0 +1,13 @@
+.app-container {
+  display: flex;
+  height: 100vh; /* Takes up the full height of the screen */
+  width: 100vw;
+  overflow: hidden; /* Prevents the whole page from scrolling */
+  background-color: #f3f4f6; /* A nice light gray background for the app */
+}
+
+.main-content {
+  flex: 1; /* Tells the content area to take up all remaining space */
+  overflow-y: auto; /* Allows the content to scroll independently of the sidebar */
+  padding: 2rem;
+}
