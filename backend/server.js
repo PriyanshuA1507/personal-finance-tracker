@@ -6,7 +6,7 @@ const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { connectDB } = require('./config/db'); 
-const { Pool } = require('pg'); // THE FIX: Import pg directly
+const { Pool } = require('pg'); 
 
 // Load environment variables
 dotenv.config();
@@ -14,22 +14,45 @@ dotenv.config();
 // 1. Connect to PostgreSQL via your existing db.js
 connectDB();
 
-// 1.5 THE FIX: Create a direct database pool just for the register route
+// 2. Create a direct database pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
+// 3. THE FIX: Force the creation of the tables immediately on startup
+pool.query(`
+  CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user'
+  );
+  
+  CREATE TABLE IF NOT EXISTS transactions (
+    id SERIAL PRIMARY KEY,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    type VARCHAR(50) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    description TEXT,
+    amount NUMERIC(12, 2) NOT NULL
+  );
+`).then(() => {
+  console.log("SUCCESS: Verified 'users' and 'transactions' tables exist!");
+}).catch(err => {
+  console.error("ERROR: Failed to create tables:", err.message);
+});
+
 const app = express();
 
-// 2. Security & Global Middleware
+// 4. Security & Global Middleware
 app.use(helmet({
   contentSecurityPolicy: false,
 }));
 app.use(cors());
 app.use(express.json());
 
-// 3. Swagger Configuration
+// 5. Swagger Configuration
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -51,7 +74,7 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// 4. User Registration Route
+// 6. User Registration Route
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -77,7 +100,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// 5. API Route Mounting
+// 7. API Route Mounting
 const authRoutes = require('./routes/authRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
