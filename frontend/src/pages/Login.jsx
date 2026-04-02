@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api'; // THE FIX: Import your configured API instance
+import { useNavigate, Link } from 'react-router-dom'; // ADDED: Link imported here
+import api from '../services/api'; 
 import { AuthContext } from '../context/AuthContext';
 
 const Login = () => {
@@ -14,7 +14,6 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      // THE FIX: Use 'api.post' and the relative path. It will automatically use the correct Live URL!
       const response = await api.post('/auth/login', {
         username,
         password,
@@ -28,18 +27,26 @@ const Login = () => {
     }
   };
 
- return (
+  return (
     <div className="form-container card">
       <h2>Welcome Back</h2>
       <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Please enter your details to sign in.</p>
       
-      {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem' }}>{error}</div>}
+      {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem' }}>{error}</div>}
       
       <form onSubmit={handleLogin}>
         <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
         <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         <button type="submit" style={{ width: '100%', marginTop: '0.5rem', padding: '0.75rem' }}>Sign In</button>
       </form>
+
+      {/* ADDED: Registration Link */}
+      <p style={{ marginTop: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+        Don't have an account?{' '}
+        <Link to="/register" style={{ color: '#4f46e5', textDecoration: 'none', fontWeight: '600' }}>
+          Create one here
+        </Link>
+      </p>
     </div>
   );
 };
