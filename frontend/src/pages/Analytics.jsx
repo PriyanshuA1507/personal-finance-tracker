@@ -16,7 +16,7 @@ const Analytics = () => {
           </div>
           <div className="stat-info">
             <p>Total Net Worth</p>
-            <h3>$24,500.00</h3>
+            <h2>${netWorth || '0.00'}</h2>
           </div>
         </div>
 
