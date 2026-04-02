@@ -11,7 +11,7 @@ const pool = new Pool({
 // @route   GET /api/transactions
 const getTransactions = async (req, res) => {
   try {
-    // THE FIX: Filter by req.user.id so they only see their own data
+    // Filter by req.user.id so they only see their own data
     const result = await pool.query(
       'SELECT * FROM transactions WHERE user_id = $1 ORDER BY date DESC',
       [req.user.id]
@@ -29,7 +29,7 @@ const createTransaction = async (req, res) => {
   const { type, category, description, amount } = req.body;
   
   try {
-    // THE FIX: Insert the transaction with the logged-in user's ID
+    // Insert the transaction with the logged-in user's ID
     const result = await pool.query(
       'INSERT INTO transactions (user_id, type, category, description, amount) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [req.user.id, type, category, description, amount]
@@ -39,6 +39,51 @@ const createTransaction = async (req, res) => {
   } catch (error) {
     console.error("Error creating transaction:", error.message);
     res.status(500).json({ message: "Server Error creating transaction" });
+  }
+};
+
+// @desc    Update an existing transaction
+// @route   PUT /api/transactions/:id
+const updateTransaction = async (req, res) => {
+  const { id } = req.params;
+  const { type, category, description, amount } = req.body;
+
+  try {
+    let query;
+    let params;
+
+    // Admin can update ANY transaction. Regular users can ONLY update their own.
+    if (req.user.role === 'admin') {
+      query = `UPDATE transactions 
+               SET type = COALESCE($1, type), 
+                   category = COALESCE($2, category), 
+                   description = COALESCE($3, description), 
+                   amount = COALESCE($4, amount) 
+               WHERE id = $5 RETURNING *`;
+      params = [type, category, description, amount, id];
+    } else {
+      query = `UPDATE transactions 
+               SET type = COALESCE($1, type), 
+                   category = COALESCE($2, category), 
+                   description = COALESCE($3, description), 
+                   amount = COALESCE($4, amount) 
+               WHERE id = $5 AND user_id = $6 RETURNING *`;
+      params = [type, category, description, amount, id, req.user.id];
+    }
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Transaction not found or unauthorized." });
+    }
+
+    res.status(200).json({ 
+      message: 'Transaction updated successfully', 
+      transaction: result.rows[0] 
+    });
+  } catch (error) {
+    console.error("Error updating transaction:", error.message);
+    res.status(500).json({ message: "Server Error updating transaction" });
   }
 };
 
@@ -77,5 +122,6 @@ const deleteTransaction = async (req, res) => {
 module.exports = {
   getTransactions,
   createTransaction,
+  updateTransaction, // <-- Exported here!
   deleteTransaction
 };
