@@ -7,6 +7,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { connectDB } = require('./config/db'); 
 const { Pool } = require('pg'); 
+const bcrypt = require('bcryptjs'); // THE FIX: Added bcryptjs for password hashing
 
 // Load environment variables
 dotenv.config();
@@ -20,7 +21,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// 3. THE FIX: Force the creation of the tables immediately on startup
+// 3. Force the creation of the tables immediately on startup
 pool.query(`
   CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -44,6 +45,9 @@ pool.query(`
 });
 
 const app = express();
+
+// THE FIX: Tell Express to trust Render's load balancers (Fixes the X-Forwarded-For error)
+app.set('trust proxy', 1);
 
 // 4. Security & Global Middleware
 app.use(helmet({
@@ -74,7 +78,7 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// 6. User Registration Route
+// 6. User Registration Route (WITH HASHING)
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -84,10 +88,14 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ message: "Username already taken" });
     }
 
+    // THE FIX: Hash the password before saving it!
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Insert new user with default 'user' role
     const newUser = await pool.query(
       'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
-      [username, password, 'user']
+      [username, hashedPassword, 'user']
     );
 
     res.status(201).json({
@@ -97,6 +105,17 @@ app.post('/api/auth/register', async (req, res) => {
   } catch (err) {
     console.error("Registration Error:", err.message);
     res.status(500).json({ error: "Server error during registration" });
+  }
+});
+
+// 6.5 TEMPORARY ADMIN ROUTE: Visit this URL in your browser to upgrade a user
+app.get('/api/auth/make-admin/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    await pool.query("UPDATE users SET role = 'admin' WHERE username = $1", [username]);
+    res.send(`${username} is now an Admin!`);
+  } catch (err) {
+    res.status(500).send(err.message);
   }
 });
 
