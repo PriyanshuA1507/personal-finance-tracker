@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { getTransactions, createTransaction, deleteTransaction } from '../services/transactionService';
-import TransactionForm from '../components/TransactionForm'; // Assuming you have this!
+import TransactionForm from '../components/TransactionForm'; 
 
 const Transactions = () => {
   const { user } = useContext(AuthContext);
@@ -20,7 +20,6 @@ const Transactions = () => {
     }
   };
 
-  // useCallback keeps the function reference stable to prevent form re-renders
   const handleAdd = useCallback(async (newTx) => {
     try {
       const savedTx = await createTransaction(newTx);
@@ -33,20 +32,21 @@ const Transactions = () => {
   const handleDelete = async (id) => {
     try {
       await deleteTransaction(id);
-      // FIXED: Changed _id to id
       setTransactions((prev) => prev.filter(tx => tx.id !== id));
     } catch (err) {
       alert("Failed to delete transaction");
     }
   };
 
-  const isReadOnly = user?.role === 'read-only';
+  // THE FIX: Define who has Admin powers
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem', paddingBottom: '3rem' }}>
       <h2>Manage Transactions</h2>
       
-      <TransactionForm onSubmit={handleAdd} disabled={isReadOnly} />
+      {/* THE FIX: Only render the Add Form if they are an Admin */}
+      {isAdmin && <TransactionForm onSubmit={handleAdd} disabled={!isAdmin} />}
 
       <div className="card table-container">
         <table>
@@ -57,20 +57,20 @@ const Transactions = () => {
               <th>Category</th>
               <th>Description</th>
               <th>Amount</th>
-              {/* Hide Actions column entirely if user is read-only */}
-              {!isReadOnly && <th style={{ textAlign: 'right' }}>Actions</th>}
+              {/* THE FIX: Hide Actions column header if user is not an Admin */}
+              {isAdmin && <th style={{ textAlign: 'right' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan={isReadOnly ? 5 : 6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0' }}>
-                  No transactions found. Try adding one above!
+                <td colSpan={isAdmin ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0' }}>
+                  No transactions found. {isAdmin && "Try adding one above!"}
                 </td>
               </tr>
             ) : (
               transactions.map(tx => (
-  <tr key={tx.id}>
+                <tr key={tx.id}>
                   <td>{new Date(tx.date).toLocaleDateString()}</td>
                   <td>
                     <span className={`badge ${tx.type}`}>
@@ -81,9 +81,9 @@ const Transactions = () => {
                   <td style={{ color: 'var(--text-muted)' }}>{tx.description || '-'}</td>
                   <td style={{ fontWeight: 600 }}>${parseFloat(tx.amount).toFixed(2)}</td>
                   
-                  {!isReadOnly && (
+                  {/* THE FIX: Only render the Delete button if they are an Admin */}
+                  {isAdmin && (
                     <td style={{ textAlign: 'right' }}>
-                      {/* FIXED: Changed _id to id */}
                       <button className="danger" onClick={() => handleDelete(tx.id)}>Delete</button>
                     </td>
                   )}
