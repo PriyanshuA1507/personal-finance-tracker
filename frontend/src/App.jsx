@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Layout from './components/Layout';
+import Register from './pages/Register';
 
 // Import the new placeholder pages
 import Analytics from './pages/Analytics';
@@ -19,6 +20,7 @@ const App = () => {
         <Routes>
           {/* Public Route: No Sidebar here! */}
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           {/* Protected Routes: Everything inside here gets the Sidebar! */}
           <Route path="/" element={<Layout />}>
