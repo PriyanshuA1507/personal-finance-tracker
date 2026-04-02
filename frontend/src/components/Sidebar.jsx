@@ -50,10 +50,14 @@ const Sidebar = () => {
         <h2>FinTracker</h2>
       </div>
 
-      {/* User Info Section */}
+      {/* THE FIX: User Info Section mapped directly to your database fields */}
       <div className="sidebar-user">
-        <h3 className="user-name">{user?.username === 'admin' ? 'Admin User' : 'Standard User'}</h3>
-        <span className="user-badge">{user?.role || 'guest'}</span>
+        <h3 className="user-name" style={{ textTransform: 'capitalize' }}>
+          {user?.username || 'Guest User'}
+        </h3>
+        <span className="user-badge" style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
+          {user?.role || 'USER'}
+        </span>
       </div>
 
       {/* Navigation Links */}
