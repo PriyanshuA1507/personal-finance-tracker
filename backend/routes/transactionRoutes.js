@@ -8,16 +8,16 @@ const {
 } = require('../controllers/transactionController');
 const { verifyToken, requireRole } = require('../middleware/auth');
 
-// Protect all transaction routes [cite: 14]
+// Protect all transaction routes
 router.use(verifyToken);
 
-// GET /api/transactions – accessible to all roles [cite: 83]
-router.get('/', getTransactions);
+// THE FIX: GET /api/transactions – Analyst & Admin ONLY (Viewers blocked)
+router.get('/', requireRole(['analyst', 'admin']), getTransactions);
 
-// POST/DELETE – restricted to admin and user [cite: 84]
-router.post('/', requireRole(['admin', 'user']), createTransaction);
+// THE FIX: POST/DELETE – Admin ONLY
+router.post('/', requireRole(['admin']), createTransaction);
 
-// This is likely line 15 - Ensure deleteTransaction is correctly imported!
-router.delete('/:id', requireRole(['admin', 'user']), deleteTransaction);
+// THE FIX: DELETE – Admin ONLY
+router.delete('/:id', requireRole(['admin']), deleteTransaction);
 
 module.exports = router;
