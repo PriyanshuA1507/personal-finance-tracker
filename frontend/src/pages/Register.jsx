@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../services/api'; // THE FIX: Import our configured Axios instance!
 
 const Register = () => {
   const [username, setUsername] = useState('');
@@ -12,25 +13,14 @@ const Register = () => {
     setError('');
 
     try {
-      // In production on Render, the backend and frontend share the same URL
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
+      // THE FIX: Use api.post instead of fetch to route to the correct Render backend URL
+      const response = await api.post('/auth/register', { username, password });
 
       alert("Registration successful! You can now log in.");
-      navigate('/login'); // Send them back to the login page
+      navigate('/login');
     } catch (err) {
-      setError(err.message);
+      // Safely extract the error message from Axios
+      setError(err.response?.data?.message || 'Registration failed');
     }
   };
 
