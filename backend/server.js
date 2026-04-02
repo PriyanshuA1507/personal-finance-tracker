@@ -152,12 +152,28 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 6C. TEMPORARY ADMIN ROUTE (For upgrading users during testing)
-app.get('/api/auth/make-admin/:username', async (req, res) => {
+// 6C. TEMPORARY ROLE ASSIGNMENT ROUTE (For testing RBAC)
+// Visit: /api/auth/set-role/username/role
+app.get('/api/auth/set-role/:username/:role', async (req, res) => {
   try {
-    const { username } = req.params;
-    await pool.query("UPDATE users SET role = 'admin' WHERE username = $1", [username]);
-    res.send(`${username} is now an Admin!`);
+    const { username, role } = req.params;
+    // Validate the role so we don't accidentally inject garbage data
+    const validRoles = ['viewer', 'analyst', 'admin', 'user'];
+    
+    if (!validRoles.includes(role)) {
+      return res.status(400).send("Invalid role. Choose viewer, analyst, or admin.");
+    }
+
+    const result = await pool.query(
+      "UPDATE users SET role = $1 WHERE username = $2 RETURNING username, role", 
+      [role, username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).send(`User '${username}' not found in database.`);
+    }
+
+    res.send(`SUCCESS: ${username} has been upgraded to an ${role}!`);
   } catch (err) {
     res.status(500).send(err.message);
   }
