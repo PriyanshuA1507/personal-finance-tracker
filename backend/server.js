@@ -14,6 +14,40 @@ dotenv.config();
 // 1. Connect to PostgreSQL
 connectDB();
 
+// 1.5 NEW: Auto-Sync Database Tables (Mimicking Option B)
+// This guarantees your empty database gets its tables created automatically!
+const syncDatabase = async () => {
+  try {
+    // Auto-create users table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'user'
+      );
+    `);
+    
+    // Auto-create transactions table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id SERIAL PRIMARY KEY,
+        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        type VARCHAR(50) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        description TEXT,
+        amount NUMERIC(12, 2) NOT NULL
+      );
+    `);
+    console.log("Database tables synced successfully!");
+  } catch (err) {
+    console.error("Failed to sync database tables:", err.message);
+  }
+};
+
+// Run the sync process immediately
+syncDatabase();
+
 const app = express();
 
 // 2. Security & Global Middleware
