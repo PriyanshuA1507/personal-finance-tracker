@@ -33,17 +33,22 @@ pool.query(`
   
   CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, -- THE FIX: Links transaction to user
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     type VARCHAR(50) NOT NULL,
     category VARCHAR(50) NOT NULL,
     description TEXT,
     amount NUMERIC(12, 2) NOT NULL
   );
+
+  -- Safely add the column if it doesn't exist yet in the live DB
+  ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
 `).then(() => {
-  console.log("SUCCESS: Verified 'users' and 'transactions' tables exist!");
+  console.log("SUCCESS: Verified 'users' and 'transactions' tables exist and are linked!");
 }).catch(err => {
   console.error("ERROR: Failed to create tables:", err.message);
 });
+
 
 const app = express();
 
