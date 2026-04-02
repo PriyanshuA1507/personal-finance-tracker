@@ -14,7 +14,6 @@ const Sidebar = () => {
   // --- DARK MODE LOGIC ---
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Check if the user already chose dark mode previously when the app loads
   useEffect(() => {
     const savedMode = localStorage.getItem('darkMode') === 'true';
     setIsDarkMode(savedMode);
@@ -26,9 +25,8 @@ const Sidebar = () => {
   const toggleDarkMode = () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
-    localStorage.setItem('darkMode', newMode); // Save to browser memory
+    localStorage.setItem('darkMode', newMode); 
     
-    // Toggle the global CSS class on the main body
     if (newMode) {
       document.body.classList.add('dark-mode');
     } else {
@@ -44,23 +42,20 @@ const Sidebar = () => {
 
   return (
     <aside className="sidebar">
-      {/* Logo Section */}
       <div className="sidebar-logo">
         <FaMoneyBillWave className="logo-icon" />
         <h2>FinTracker</h2>
       </div>
 
-      {/* THE FIX: User Info Section mapped directly to your database fields */}
       <div className="sidebar-user">
         <h3 className="user-name" style={{ textTransform: 'capitalize' }}>
           {user?.username || 'Guest User'}
         </h3>
         <span className="user-badge" style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
-          {user?.role || 'USER'}
+          {user?.role || 'VIEWER'}
         </span>
       </div>
 
-      {/* Navigation Links */}
       <div className="sidebar-section">
         <p className="section-title">NAVIGATION</p>
         <nav className="nav-menu">
@@ -68,19 +63,22 @@ const Sidebar = () => {
             <FaChartBar className="nav-icon" /> Dashboard
           </NavLink>
           
-          <NavLink to="/transactions" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            <FaCreditCard className="nav-icon" /> Transactions
-          </NavLink>
-          
           <NavLink to="/analytics" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             <FaChartLine className="nav-icon" /> Analytics
           </NavLink>
+
+          {/* THE FIX: Only Analysts and Admins can see the Transactions tab */}
+          {(user?.role === 'analyst' || user?.role === 'admin') && (
+            <NavLink to="/transactions" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <FaCreditCard className="nav-icon" /> Transactions
+            </NavLink>
+          )}
 
           <NavLink to="/performance" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             <FaBolt className="nav-icon" /> Performance
           </NavLink>
 
-          {/* Only show Users tab if the person logged in is an admin */}
+          {/* Only Admins can see the Users tab */}
           {user?.role === 'admin' && (
             <NavLink to="/users" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
               <FaUsers className="nav-icon" /> Users
@@ -93,12 +91,9 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      {/* Settings Section */}
       <div className="sidebar-section">
         <p className="section-title">SETTINGS</p>
         <div className="nav-menu">
-          
-          {/* THE UPDATED DARK MODE BUTTON */}
           <button className="nav-btn" onClick={toggleDarkMode}>
             {isDarkMode ? (
               <><FaSun className="nav-icon warning-icon" /> Light Mode</>
