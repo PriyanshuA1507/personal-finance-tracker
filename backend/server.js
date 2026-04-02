@@ -5,54 +5,26 @@ const helmet = require('helmet');
 const path = require('path'); 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
-// Ensure pool is exported from your db.js to use the inline register route
-const { connectDB, pool } = require('./config/db'); 
+const { connectDB } = require('./config/db'); 
+const { Pool } = require('pg'); // THE FIX: Import pg directly
 
 // Load environment variables
 dotenv.config();
 
-// 1. Connect to PostgreSQL
+// 1. Connect to PostgreSQL via your existing db.js
 connectDB();
 
-// 1.5 NEW: Auto-Sync Database Tables (Mimicking Option B)
-// This guarantees your empty database gets its tables created automatically!
-const syncDatabase = async () => {
-  try {
-    // Auto-create users table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(20) DEFAULT 'user'
-      );
-    `);
-    
-    // Auto-create transactions table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS transactions (
-        id SERIAL PRIMARY KEY,
-        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        type VARCHAR(50) NOT NULL,
-        category VARCHAR(50) NOT NULL,
-        description TEXT,
-        amount NUMERIC(12, 2) NOT NULL
-      );
-    `);
-    console.log("Database tables synced successfully!");
-  } catch (err) {
-    console.error("Failed to sync database tables:", err.message);
-  }
-};
-
-// Run the sync process immediately
-syncDatabase();
+// 1.5 THE FIX: Create a direct database pool just for the register route
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 const app = express();
 
 // 2. Security & Global Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Allows Swagger UI to load correctly
+  contentSecurityPolicy: false,
 }));
 app.use(cors());
 app.use(express.json());
@@ -79,7 +51,7 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// 4. NEW: User Registration Route
+// 4. User Registration Route
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -100,27 +72,23 @@ app.post('/api/auth/register', async (req, res) => {
       user: newUser.rows[0]
     });
   } catch (err) {
-    console.error(err.message);
+    console.error("Registration Error:", err.message);
     res.status(500).json({ error: "Server error during registration" });
   }
 });
 
-// 5. API Route Mounting (Rate Limiters Removed to prevent lockouts)
+// 5. API Route Mounting
 const authRoutes = require('./routes/authRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 
-// Rate limiters (authLimiter, etc.) are removed from these calls
 app.use('/api/auth', authRoutes); 
 app.use('/api/transactions', transactionRoutes); 
 app.use('/api/analytics', analyticsRoutes); 
 
 // --- PRODUCTION STATIC ASSETS & SPA ROUTING ---
-
-// 6. Serve static files from the React frontend build folder
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-// 7. SPA Catch-all: Matches any route that does NOT start with /api and sends index.html
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
