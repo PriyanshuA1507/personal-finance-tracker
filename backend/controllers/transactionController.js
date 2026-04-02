@@ -9,13 +9,44 @@ const pool = new Pool({
 
 // @desc    Get all transactions for the logged-in user
 // @route   GET /api/transactions
+// @desc    Get all transactions (with optional filtering)
+// @route   GET /api/transactions
 const getTransactions = async (req, res) => {
   try {
-    // Filter by req.user.id so they only see their own data
-    const result = await pool.query(
-      'SELECT * FROM transactions WHERE user_id = $1 ORDER BY date DESC',
-      [req.user.id]
-    );
+    // 1. Extract query parameters from the request URL
+    const { type, category, startDate, endDate } = req.query;
+
+    // 2. Start building the base SQL query and the parameters array
+    let queryText = 'SELECT * FROM transactions WHERE user_id = $1';
+    const params = [req.user.id];
+
+    // 3. Dynamically append filters if they exist in the request
+    if (type) {
+      params.push(type); // Adds the type to the array (e.g., 'expense')
+      queryText += ` AND type = $${params.length}`; // Becomes $2
+    }
+
+    if (category) {
+      params.push(category); 
+      queryText += ` AND category = $${params.length}`; 
+    }
+
+    if (startDate) {
+      params.push(startDate);
+      queryText += ` AND date >= $${params.length}`;
+    }
+
+    if (endDate) {
+      params.push(endDate);
+      queryText += ` AND date <= $${params.length}`;
+    }
+
+    // 4. Always order by the newest first
+    queryText += ' ORDER BY date DESC';
+
+    // 5. Execute the dynamically built query
+    const result = await pool.query(queryText, params);
+    
     res.status(200).json(result.rows);
   } catch (error) {
     console.error("Error fetching transactions:", error.message);
