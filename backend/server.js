@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const jwt = require('jsonwebtoken'); // Generates the auth token
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path'); 
@@ -7,7 +8,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { connectDB } = require('./config/db'); 
 const { Pool } = require('pg'); 
-const bcrypt = require('bcryptjs'); // THE FIX: Added bcryptjs for password hashing
+const bcrypt = require('bcryptjs'); // Hashes the passwords
 
 // Load environment variables
 dotenv.config();
@@ -46,7 +47,7 @@ pool.query(`
 
 const app = express();
 
-// THE FIX: Tell Express to trust Render's load balancers (Fixes the X-Forwarded-For error)
+// Tell Express to trust Render's load balancers
 app.set('trust proxy', 1);
 
 // 4. Security & Global Middleware
@@ -78,21 +79,22 @@ const swaggerOptions = {
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-// 6. User Registration Route (WITH HASHING)
+// ---------------------------------------------------------
+// 🛡️ CORE AUTHENTICATION ROUTES
+// ---------------------------------------------------------
+
+// 6A. User Registration Route (WITH HASHING)
 app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   try {
-    // Check if user already exists
     const userCheck = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     if (userCheck.rows.length > 0) {
       return res.status(400).json({ message: "Username already taken" });
     }
 
-    // THE FIX: Hash the password before saving it!
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert new user with default 'user' role
     const newUser = await pool.query(
       'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
       [username, hashedPassword, 'user']
@@ -108,7 +110,44 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// 6.5 TEMPORARY ADMIN ROUTE: Visit this URL in your browser to upgrade a user
+// 6B. NEW: Fully secure Login Route
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    // 1. Check if the user exists
+    const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ message: "Invalid credentials" }); 
+    }
+
+    const user = userResult.rows[0];
+
+    // 2. Compare passwords
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" }); 
+    }
+
+    // 3. Generate JWT Token
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      process.env.JWT_SECRET || 'fallback_secret_key',
+      { expiresIn: '1d' }
+    );
+
+    // 4. Send response back to Frontend
+    res.json({
+      token,
+      user: { id: user.id, username: user.username, role: user.role }
+    });
+
+  } catch (err) {
+    console.error("Login Error:", err.message);
+    res.status(500).json({ message: "Server error during login" });
+  }
+});
+
+// 6C. TEMPORARY ADMIN ROUTE (For upgrading users during testing)
 app.get('/api/auth/make-admin/:username', async (req, res) => {
   try {
     const { username } = req.params;
@@ -119,16 +158,22 @@ app.get('/api/auth/make-admin/:username', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------
 // 7. API Route Mounting
+// ---------------------------------------------------------
 const authRoutes = require('./routes/authRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 
+// Notice: We still mount authRoutes in case you have other routes in there, 
+// but Express will use our inline /register and /login routes above first!
 app.use('/api/auth', authRoutes); 
 app.use('/api/transactions', transactionRoutes); 
 app.use('/api/analytics', analyticsRoutes); 
 
-// --- PRODUCTION STATIC ASSETS & SPA ROUTING ---
+// ---------------------------------------------------------
+// 8. PRODUCTION STATIC ASSETS & SPA ROUTING
+// ---------------------------------------------------------
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 app.get(/^\/(?!api).*/, (req, res) => {
