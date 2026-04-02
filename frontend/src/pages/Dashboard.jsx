@@ -28,8 +28,8 @@ const Dashboard = () => {
     let income = 0;
     let expense = 0;
     transactions.forEach(tx => {
-      if (tx.type === 'income') income += tx.amount;
-      if (tx.type === 'expense') expense += tx.amount;
+      if (tx.type.toLowerCase() === 'income') income += Number(tx.amount);
+      if (tx.type.toLowerCase() === 'expense') expense += Number(tx.amount);
     });
 
     return {
@@ -44,8 +44,8 @@ const Dashboard = () => {
   // 2. Optimize expensive calculations: Expenses by Category (Pie Chart)
   const categoryData = useMemo(() => {
     const categories = {};
-    transactions.filter(tx => tx.type === 'expense').forEach(tx => {
-      categories[tx.category] = (categories[tx.category] || 0) + tx.amount;
+    transactions.filter(tx => tx.type.toLowerCase() === 'expense').forEach(tx => {
+      categories[tx.category] = (categories[tx.category] || 0) + Number(tx.amount);
     });
 
     return {
@@ -57,18 +57,37 @@ const Dashboard = () => {
     };
   }, [transactions]);
 
-  // 3. Mock Monthly Trend (Line Chart) for demonstration
-  const trendData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [{
-      label: 'Monthly Spending',
-      data: [1200, 1900, 1500, 2200, 1800, 2500],
-      borderColor: '#36A2EB',
-      tension: 0.1
-    }]
-  };
+  // 3. THE FIX: Dynamic Monthly Trend (Line Chart)
+  const trendData = useMemo(() => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyTotals = {};
+    
+    // Initialize all months to 0
+    monthNames.forEach(m => monthlyTotals[m] = 0);
 
- if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading dashboard...</div>;
+    // Add up expenses for each month
+    transactions.forEach(tx => {
+      if (tx.type.toLowerCase() === 'expense') {
+        const date = new Date(tx.date);
+        const month = monthNames[date.getMonth()];
+        monthlyTotals[month] += Number(tx.amount);
+      }
+    });
+
+    return {
+      labels: monthNames,
+      datasets: [{
+        label: 'Monthly Spending',
+        data: monthNames.map(m => monthlyTotals[m]),
+        borderColor: '#36A2EB',
+        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        tension: 0.3, // Adds a slight curve to the line
+        fill: true
+      }]
+    };
+  }, [transactions]);
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading dashboard...</div>;
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
