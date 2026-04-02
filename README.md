@@ -6,12 +6,26 @@ A production-ready full-stack Personal Finance Tracker featuring Role-Based Acce
 **Application URL**: [https://personal-finance-tracker-1-64th.onrender.com/login](https://personal-finance-tracker-1-64th.onrender.com/login)  
 **API Documentation (Swagger)**: [https://personal-finance-tracker-1-64th.onrender.com/api-docs](https://personal-finance-tracker-1-64th.onrender.com/api-docs)
 
-## 🔑 Demo Credentials
-Access the application using these pre-configured roles:
-- **Admin**: `admin` / `pass123` (Full access to all transactions)
-- **User**: `user` / `pass123` (Can manage own data only)
-- **Read-Only**: `readonly` / `pass123` (View-only access to data)
 
+## Testing Credentials & Role Verification:
+To evaluate the Role-Based Access Control (RBAC) and data isolation features, please use the following pre-configured test accounts. The password for all accounts is: 12345
+
+Admin Account
+Username: priyanshu_admin
+Password: 12345
+
+Access: Full management of Dashboard, Analytics, and Transactions.
+
+Analyst Account
+Username: equity_analyst
+Password: 12345
+
+Access: Can view Dashboard and Transactions, but "Add" and "Delete" buttons are hidden.
+Viewer Account
+Username: audit_viewer
+Password: 12345
+
+Access: Restricted to high-level Dashboard and Analytics views only.
 ## 🛠️ Tech Stack
 - **Frontend**: React 18, Chart.js, Context API, Tailwind CSS
 - **Backend**: Node.js, Express.js, PostgreSQL (Sequelize ORM)
