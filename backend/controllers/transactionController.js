@@ -1,53 +1,81 @@
-const Transaction = require('../models/Transaction');
-const redisClient = require('../config/redis'); // Required for caching [cite: 62]
+const { Pool } = require('pg');
+require('dotenv').config();
 
-// 1. Get all transactions (accessible to all roles) [cite: 83]
-exports.getTransactions = async (req, res) => {
+// Bulletproof database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+// @desc    Get all transactions for the logged-in user
+// @route   GET /api/transactions
+const getTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.findAll({ 
-      where: { userId: req.user.id },
-      order: [['date', 'DESC']]
-    });
-    res.json(transactions);
+    // THE FIX: Filter by req.user.id so they only see their own data
+    const result = await pool.query(
+      'SELECT * FROM transactions WHERE user_id = $1 ORDER BY date DESC',
+      [req.user.id]
+    );
+    res.status(200).json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error fetching transactions:", error.message);
+    res.status(500).json({ message: "Server Error fetching transactions" });
   }
 };
 
-// 2. Create transaction (admin and user only) [cite: 23, 84]
-exports.createTransaction = async (req, res) => {
+// @desc    Create a new transaction
+// @route   POST /api/transactions
+const createTransaction = async (req, res) => {
+  const { type, category, description, amount } = req.body;
+  
   try {
-    const transaction = await Transaction.create({
-      ...req.body,
-      userId: req.user.id
-    });
+    // THE FIX: Insert the transaction with the logged-in user's ID
+    const result = await pool.query(
+      'INSERT INTO transactions (user_id, type, category, description, amount) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.user.id, type, category, description, amount]
+    );
     
-    // Invalidate analytics cache because data has changed [cite: 65]
-    await redisClient.del(`analytics:${req.user.id}`);
-    
-    res.status(201).json(transaction);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error creating transaction:", error.message);
+    res.status(500).json({ message: "Server Error creating transaction" });
   }
 };
 
-// 3. Delete transaction (admin and user only) [cite: 23, 84]
-exports.deleteTransaction = async (req, res) => {
+// @desc    Delete a transaction
+// @route   DELETE /api/transactions/:id
+const deleteTransaction = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
-    const transaction = await Transaction.findByPk(id);
+    let query;
+    let params;
 
-    if (!transaction) return res.status(404).json({ message: 'Not found' });
-
-    // Ensure users can only delete their own data [cite: 18, 79]
-    if (transaction.userId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Unauthorized' });
+    // Admin can delete ANY transaction. Regular users can ONLY delete their own.
+    if (req.user.role === 'admin') {
+      query = 'DELETE FROM transactions WHERE id = $1 RETURNING *';
+      params = [id];
+    } else {
+      query = 'DELETE FROM transactions WHERE id = $1 AND user_id = $2 RETURNING *';
+      params = [id, req.user.id];
     }
 
-    await transaction.destroy();
-    await redisClient.del(`analytics:${req.user.id}`); // Clear cache [cite: 65]
-    res.json({ message: 'Transaction deleted' });
+    const result = await pool.query(query, params);
+
+    // If no rows were returned, the transaction didn't exist OR didn't belong to the user
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Transaction not found or you are not authorized to delete it." });
+    }
+
+    res.status(200).json({ message: 'Transaction deleted successfully', id: id });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error deleting transaction:", error.message);
+    res.status(500).json({ message: "Server Error deleting transaction" });
   }
+};
+
+module.exports = {
+  getTransactions,
+  createTransaction,
+  deleteTransaction
 };
